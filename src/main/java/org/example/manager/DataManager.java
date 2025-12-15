@@ -6,6 +6,7 @@ import org.example.manager.helper.ClassifierDataManager;
 import org.example.manager.helper.DeliveryPointDataManager;
 import org.example.manager.helper.GeoDataManager;
 
+import java.util.Map;
 import java.util.Random;
 
 @Slf4j
@@ -27,11 +28,10 @@ public class DataManager {
 
         classifierDataManager.importClassifiers(api);
 
-        // 2. Імпорт географії (розкоментуй, коли потрібно)
-        // geoDataManager.importGeography(api);
-        // Map<String, Integer> cityMap = geoDataManager.getCityMap();
+        geoDataManager.importGeography(api);
 
-        // deliveryPointDataManager.importDeliveryPoints(api, cityMap);
+        Map<String, Integer> cityMap = geoDataManager.getCityMap();
+        deliveryPointDataManager.importDeliveryPoints(api, cityMap);
 
         log.info("=== ГЛОБАЛЬНИЙ ПРОЦЕС ЗАВЕРШЕНО ===");
     }

@@ -53,10 +53,13 @@ public class GeoDataManager {
 
             long duration = (System.currentTimeMillis() - start) / 1000;
             log.info("=== ІМПОРТ ГЕОГРАФІЇ ЗАВЕРШЕНО ({} с.) ===", duration);
-
         } catch (Exception e) {
             log.error("КРИТИЧНА ПОМИЛКА ПРИ ІМПОРТІ ГЕОГРАФІЇ", e);
         }
+    }
+
+    public Map<String, Integer> getCityMap() {
+        return cityRepository.getCityNameIdMap();
     }
 
     private List<ParsedDistrict> extractDistrictsFromCities(List<ParsedCity> cities) {
@@ -89,6 +92,7 @@ public class GeoDataManager {
                 uniqueDistricts.put(key, district);
             }
         }
+
         return new ArrayList<>(uniqueDistricts.values());
     }
 }
