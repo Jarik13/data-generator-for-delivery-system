@@ -37,7 +37,6 @@ public class ClassifierDataManager {
             log.info(">>> [3/3] Завантаження типів пакування...");
             List<ParsedPack> packs = api.getPackList();
             boxRepository.saveBoxData(packs);
-
         } catch (Exception e) {
             log.error("ПОМИЛКА ПРИ ІМПОРТІ КЛАСИФІКАТОРІВ", e);
         }

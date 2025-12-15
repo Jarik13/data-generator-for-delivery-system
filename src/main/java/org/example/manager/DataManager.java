@@ -5,6 +5,7 @@ import org.example.api.NovaPoshtaAPI;
 import org.example.manager.helper.ClassifierDataManager;
 import org.example.manager.helper.DeliveryPointDataManager;
 import org.example.manager.helper.GeoDataManager;
+import org.example.manager.helper.PersonDataManager;
 
 import java.util.Map;
 import java.util.Random;
@@ -16,11 +17,13 @@ public class DataManager {
     private final GeoDataManager geoDataManager;
     private final DeliveryPointDataManager deliveryPointDataManager;
     private final ClassifierDataManager classifierDataManager;
+    private final PersonDataManager personDataManager;
 
     public DataManager() {
         this.geoDataManager = new GeoDataManager();
         this.deliveryPointDataManager = new DeliveryPointDataManager(random);
         this.classifierDataManager = new ClassifierDataManager(random);
+        this.personDataManager = new PersonDataManager();
     }
 
     public void importAllData(NovaPoshtaAPI api) {
@@ -32,6 +35,8 @@ public class DataManager {
 
         Map<String, Integer> cityMap = geoDataManager.getCityMap();
         deliveryPointDataManager.importDeliveryPoints(api, cityMap);
+
+        personDataManager.generateAllPeople();
 
         log.info("=== ГЛОБАЛЬНИЙ ПРОЦЕС ЗАВЕРШЕНО ===");
     }
