@@ -3,6 +3,7 @@ package org.example.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.model.DeliveryPoint;
+import org.example.model.parsed.ParsedCargoType;
 import org.example.model.parsed.ParsedCity;
 import org.example.model.parsed.ParsedPack;
 import org.example.model.parsed.ParsedRegion;
@@ -59,6 +60,15 @@ public class NovaPoshtaAPI {
                 "точок доставки",
                 100,
                 this::parseDeliveryPointFromJson
+        );
+    }
+
+    public List<ParsedCargoType> getCargoTypes() {
+        return getListNoPagination(
+                "Common",
+                "getCargoTypes",
+                "типів вантажу",
+                this::parseCargoTypeFromJson
         );
     }
 
@@ -211,6 +221,13 @@ public class NovaPoshtaAPI {
         dp.setRef(node.path("Ref").asText());
         dp.setTypeRef(node.path("TypeOfWarehouse").asText());
         return dp;
+    }
+
+    private ParsedCargoType parseCargoTypeFromJson(JsonNode node) {
+        ParsedCargoType type = new ParsedCargoType();
+        type.setRef(node.path("Ref").asText());
+        type.setDescription(node.path("Description").asText());
+        return type;
     }
 
     private ParsedPack parsePackFromJson(JsonNode node) {
