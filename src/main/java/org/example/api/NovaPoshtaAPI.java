@@ -4,14 +4,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.model.DeliveryPoint;
 import org.example.model.parsed.ParsedCity;
+import org.example.model.parsed.ParsedPack;
 import org.example.model.parsed.ParsedRegion;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -44,20 +47,70 @@ public class NovaPoshtaAPI {
                 "Address",
                 "getSettlements",
                 "населених пунктів",
-                200,
+                80,
                 this::parseCityFromJson
         );
     }
 
-    public List<DeliveryPoint> getDeliveryPoints() throws Exception {
-        // !!! Збільшив ліміт, щоб отримати більше відділень
+    public List<DeliveryPoint> getDeliveryPoints() {
         return getDataFromAPI(
                 "Address",
                 "getWarehouses",
                 "точок доставки",
-                20,
+                100,
                 this::parseDeliveryPointFromJson
         );
+    }
+
+    public List<ParsedPack> getPackList() {
+        return getListNoPagination(
+                "Common",
+                "getPackList",
+                "типів пакування",
+                this::parsePackFromJson
+        );
+    }
+
+    private <T> List<T> getListNoPagination(
+            String modelName,
+            String methodName,
+            String entityName,
+            Function<JsonNode, T> parser) {
+
+        List<T> results = new ArrayList<>();
+        try {
+            String jsonBody = """
+                {
+                    "apiKey": "%s",
+                    "modelName": "%s",
+                    "calledMethod": "%s"
+                }
+                """.formatted(API_KEY, modelName, methodName);
+
+            HttpRequest request = createHttpRequest(jsonBody);
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            JsonNode root = objectMapper.readTree(response.body());
+
+            if (root.has("success") && !root.get("success").asBoolean()) {
+                System.err.println("API Error (" + entityName + "): " + root.path("errors"));
+                return Collections.emptyList();
+            }
+
+            JsonNode data = root.path("data");
+            if (data.isArray()) {
+                for (JsonNode item : data) {
+                    T parsedItem = parser.apply(item);
+                    if (parsedItem != null) {
+                        results.add(parsedItem);
+                    }
+                }
+            }
+            System.out.printf("=== Всього отримано %d %s (одним запитом) ===%n", results.size(), entityName);
+
+        } catch (Exception e) {
+            System.err.println("Exception fetching " + entityName + ": " + e.getMessage());
+        }
+        return results;
     }
 
     private <T> List<T> getDataFromAPI(
@@ -70,6 +123,7 @@ public class NovaPoshtaAPI {
         List<T> results = new ArrayList<>();
         int page = 1;
         int emptyPagesCount = 0;
+        int limit = 500;
 
         while (page <= maxPages) {
             try {
@@ -80,10 +134,10 @@ public class NovaPoshtaAPI {
                         "calledMethod": "%s",
                         "methodProperties": {
                             "Page": "%d",
-                            "Limit": "150"
+                            "Limit": "%d"
                         }
                     }
-                    """.formatted(API_KEY, modelName, methodName, page);
+                    """.formatted(API_KEY, modelName, methodName, page, limit);
 
                 HttpRequest request = createHttpRequest(jsonBody);
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -114,11 +168,10 @@ public class NovaPoshtaAPI {
 
                 System.out.println("Сторінка " + page + ": завантажено " + itemsAdded + " " + entityName + ".");
 
-                if (itemsAdded < 50 && page > 1) break;
+                if (itemsAdded < limit && page > 1) break;
 
                 page++;
-
-                Thread.sleep(150);
+                Thread.sleep(200);
             } catch (Exception e) {
                 System.err.println("Exception on page " + page + ": " + e.getMessage());
                 break;
@@ -158,5 +211,15 @@ public class NovaPoshtaAPI {
         dp.setRef(node.path("Ref").asText());
         dp.setTypeRef(node.path("TypeOfWarehouse").asText());
         return dp;
+    }
+
+    private ParsedPack parsePackFromJson(JsonNode node) {
+        ParsedPack pack = new ParsedPack();
+        pack.setRef(node.path("Ref").asText());
+        pack.setDescription(node.path("Description").asText());
+        pack.setLength(new BigDecimal(node.path("Length").asText("0").isEmpty() ? "0" : node.path("Length").asText("0")));
+        pack.setWidth(new BigDecimal(node.path("Width").asText("0").isEmpty() ? "0" : node.path("Width").asText("0")));
+        pack.setHeight(new BigDecimal(node.path("Height").asText("0").isEmpty() ? "0" : node.path("Height").asText("0")));
+        return pack;
     }
 }
