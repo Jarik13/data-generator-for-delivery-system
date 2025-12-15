@@ -1,4 +1,4 @@
 package org.example.model.item;
 
-public class StorageConditionItem {
+public record StorageConditionItem(String name, String description) {
 }

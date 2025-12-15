@@ -16,7 +16,6 @@ public class DataManager {
     private final DeliveryPointDataManager deliveryPointDataManager;
     private final ClassifierDataManager classifierDataManager;
 
-
     public DataManager() {
         this.geoDataManager = new GeoDataManager();
         this.deliveryPointDataManager = new DeliveryPointDataManager(random);

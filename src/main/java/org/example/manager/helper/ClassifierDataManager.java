@@ -6,6 +6,7 @@ import org.example.model.parsed.ParsedCargoType;
 import org.example.model.parsed.ParsedPack;
 import org.example.repository.BoxRepository;
 import org.example.repository.ParcelTypeRepository;
+import org.example.repository.StaticDataRepository;
 
 import java.util.List;
 import java.util.Random;
@@ -14,23 +15,29 @@ import java.util.Random;
 public class ClassifierDataManager {
     private final BoxRepository boxRepository;
     private final ParcelTypeRepository parcelTypeRepository;
+    private final StaticDataRepository staticDataRepository;
 
     public ClassifierDataManager(Random random) {
         this.boxRepository = new BoxRepository(random);
         this.parcelTypeRepository = new ParcelTypeRepository();
+        this.staticDataRepository = new StaticDataRepository();
     }
 
     public void importClassifiers(NovaPoshtaAPI api) {
         log.info("=== ПОЧАТОК ІМПОРТУ КЛАСИФІКАТОРІВ ===");
 
         try {
-            log.info(">>> [1/2] Завантаження типів вантажу (Parcel Types)...");
+            log.info(">>> [1/3] Завантаження статичних довідників...");
+            staticDataRepository.saveAll();
+
+            log.info(">>> [2/3] Завантаження типів вантажу (Parcel Types)...");
             List<ParsedCargoType> cargoTypes = api.getCargoTypes();
             parcelTypeRepository.saveParcelTypes(cargoTypes);
 
-            log.info(">>> [2/2] Завантаження типів пакування...");
+            log.info(">>> [3/3] Завантаження типів пакування...");
             List<ParsedPack> packs = api.getPackList();
             boxRepository.saveBoxData(packs);
+
         } catch (Exception e) {
             log.error("ПОМИЛКА ПРИ ІМПОРТІ КЛАСИФІКАТОРІВ", e);
         }
