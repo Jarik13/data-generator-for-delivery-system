@@ -43,11 +43,14 @@ public class GeoDataManager {
 
             log.info(">>> [3/5] Збереження міст у БД...");
             cityRepository.saveCities(settlements, districtMap);
-            Map<String, Integer> cityCompositeMap = cityRepository.getCityCompositeMap();
-            log.info("Завантажено унікальну мапу міст: {} записів", cityCompositeMap.size());
+            Map<String, Object> smartCityMap = cityRepository.getCityMap();
+            Map<String, Map<String, Integer>> smartMap = (Map<String, Map<String, Integer>>) smartCityMap.get("smart");
+            log.info("Завантажено розумну мапу міст: {} унікальних назв у областях", smartMap.size());
 
             log.info(">>> [4/5] Генерація та збереження вулиць...");
-            List<ParsedStreet> streets = streetRepository.generateStreets(settlements, cityCompositeMap);
+            List<ParsedStreet> streets = streetRepository.generateStreets(settlements, smartCityMap);
+
+            log.info("Згенеровано вулиць: {}", streets.size());
             streetRepository.saveStreets(streets);
 
             log.info(">>> [5/5] Генерація будинків...");
@@ -63,35 +66,20 @@ public class GeoDataManager {
         }
     }
 
-    public Map<String, Integer> getCityMap() {
-        return cityRepository.getCityCompositeMap();
-    }
-
     private List<ParsedDistrict> extractDistrictsFromCities(List<ParsedCity> cities) {
         Map<String, ParsedDistrict> uniqueDistricts = new HashMap<>();
 
         for (ParsedCity city : cities) {
-            String rawDistrict = city.getArea();
             String regionName = city.getRegion();
+            String rawDistrict = city.getArea();
 
-            if (rawDistrict == null || rawDistrict.isBlank()) continue;
+            String districtName = (rawDistrict == null || rawDistrict.isBlank()) ? city.getDescription() : rawDistrict;
+            String fixedName = CityRepository.prepareDistrictName(districtName);
 
-            String key = regionName + "_" + rawDistrict;
+            String key = regionName + "_" + fixedName;
 
             if (!uniqueDistricts.containsKey(key)) {
                 ParsedDistrict district = new ParsedDistrict();
-
-                String fixedName = rawDistrict.trim();
-                if (fixedName.endsWith("а")) {
-                    fixedName = fixedName.substring(0, fixedName.length() - 1) + "ий";
-                } else if (fixedName.endsWith("е")) {
-                    fixedName = fixedName.substring(0, fixedName.length() - 1) + "ий";
-                }
-
-                if (!fixedName.toLowerCase().contains("район") && !fixedName.toLowerCase().contains("р-н")) {
-                    fixedName += " район";
-                }
-
                 district.setName(fixedName);
                 district.setRegionName(regionName);
                 uniqueDistricts.put(key, district);

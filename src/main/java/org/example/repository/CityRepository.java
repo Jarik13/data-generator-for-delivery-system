@@ -2,74 +2,73 @@ package org.example.repository;
 
 import org.example.config.DatabaseConfig;
 import org.example.model.parsed.ParsedCity;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CityRepository {
-    public static String buildCompositeKey(String region, String district, String cityFullName) {
-        String r = normalize(region);
-        String d = normalize(district);
-        String c = normalize(cityFullName);
+    public static String prepareDistrictName(String rawName) {
+        if (rawName == null || rawName.isBlank()) return "";
+        String name = rawName.trim();
+        if (name.endsWith("а")) name = name.substring(0, name.length() - 1) + "ий";
+        else if (name.endsWith("е")) name = name.substring(0, name.length() - 1) + "ий";
 
-        if (d.isBlank()) {
-            d = c;
-        }
-
-        return r + "|" + d + "|" + c;
+        name = name.replaceAll("(?i)\\s*(р-н|район)$", "").trim();
+        return name + " район";
     }
 
     public static String normalize(String text) {
-        if (text == null) return "";
-
-        String t = text.toLowerCase()
-                .replaceAll("(селище міського типу|міського типу|область|район|р-н|місто|село|селище|смт|м\\.|с\\.)", "")
-                .replaceAll("[^а-яіїєґ]", "")
-                .trim();
-
-        t = t.replaceAll("(ська|ський|ське|івська|івський|івське|ий|а|е|я|о|ь)$", "");
-        t = t.replace("з", "ж");
-
-        return t;
+        if (text == null || text.isBlank()) return "";
+        String extra = "";
+        Matcher m = Pattern.compile("\\((.*?)\\)").matcher(text);
+        if (m.find()) {
+            extra = m.group(1).toLowerCase()
+                    .replaceAll("(сільська|селищна|міська|рада|тг|громада|територіальна)", "")
+                    .replaceAll("[^а-яіїєґ0-9]", "").trim();
+        }
+        String t = text.replaceAll("\\(.*?\\)", "").toLowerCase().trim();
+        t = t.replaceAll("^(селище міського типу|міського типу|місто|село|селище|смт|м\\.|с\\.)\\s+", "");
+        t = t.replaceAll("\\s+(район|р-н|область)$", "");
+        t = t.replace("'", "").replace("’", "").replace("`", "");
+        t = t.replace("i", "і").replace("y", "і").replace("и", "і").replace("ї", "і").replace("є", "е");
+        t = t.replaceAll("[^а-яіїєґ0-9]", "");
+        t = t.replaceAll("(івська|івський|івське|ська|ський|ське)$", "");
+        t = t.replace("ж", "з").replace("ц", "с");
+        return t.trim() + (extra.isEmpty() ? "" : "|" + extra);
     }
 
     public void saveCities(List<ParsedCity> cities, Map<String, Integer> districtMap) {
         System.out.println("--- Збереження населених пунктів у БД ---");
         String sql = "INSERT INTO cities (city_name, district_id) VALUES (?, ?)";
-        Set<String> processedKeys = new HashSet<>();
 
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             conn.setAutoCommit(false);
             int count = 0;
+
             for (ParsedCity city : cities) {
                 String regionName = city.getRegion();
                 String rawDistrict = city.getArea();
-                if (rawDistrict == null || rawDistrict.isEmpty()) continue;
 
-                String searchDistrict = rawDistrict.trim();
-                if (searchDistrict.endsWith("а")) searchDistrict = searchDistrict.substring(0, searchDistrict.length() - 1) + "ий";
-                else if (searchDistrict.endsWith("е")) searchDistrict = searchDistrict.substring(0, searchDistrict.length() - 1) + "ий";
-                searchDistrict = searchDistrict.replace(" район", "").replace(" р-н", "").trim();
+                String districtName = (rawDistrict == null || rawDistrict.isBlank()) ? city.getDescription() : rawDistrict;
+                String normalizedDistrict = prepareDistrictName(districtName);
 
-                String districtKey = regionName + "_" + searchDistrict;
+                String districtKey = regionName + "_" + normalizedDistrict;
                 Integer districtId = districtMap.get(districtKey);
 
                 if (districtId != null) {
                     String fullName = city.getType() + " " + city.getDescription();
-                    String dupKey = districtId + "_" + fullName;
-                    if (processedKeys.contains(dupKey)) continue;
-                    processedKeys.add(dupKey);
-
                     ps.setString(1, fullName);
                     ps.setInt(2, districtId);
                     ps.addBatch();
                     count++;
                 }
-                if (count > 0 && count % 5000 == 0) { ps.executeBatch(); conn.commit(); }
+
+                if (count > 0 && count % 5000 == 0) {
+                    ps.executeBatch();
+                    conn.commit();
+                }
             }
             ps.executeBatch();
             conn.commit();
@@ -77,27 +76,28 @@ public class CityRepository {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    public Map<String, Integer> getCityCompositeMap() {
-        Map<String, Integer> map = new HashMap<>();
+    public Map<String, Object> getCityMap() {
+        Map<String, Map<String, Integer>> smartMap = new HashMap<>();
         String sql = """
             SELECT c.city_id, c.city_name, d.district_name, r.region_name 
             FROM cities c
-            JOIN districts d ON c.district_id = d.district_id
-            JOIN regions r ON d.region_id = r.region_id
+            LEFT JOIN districts d ON c.district_id = d.district_id
+            LEFT JOIN regions r ON d.region_id = r.region_id
         """;
         try (Connection conn = DatabaseConfig.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                String key = buildCompositeKey(
-                        rs.getString("region_name"),
-                        rs.getString("district_name"),
-                        rs.getString("city_name")
-                );
-                map.put(key, rs.getInt("city_id"));
+                int id = rs.getInt("city_id");
+                String reg = normalize(rs.getString("region_name"));
+                String dist = normalize(rs.getString("district_name"));
+                String cityKeyFull = normalize(rs.getString("city_name"));
+                String lookupKey = reg + "|" + cityKeyFull;
+                smartMap.computeIfAbsent(lookupKey, k -> new HashMap<>()).put(dist, id);
             }
-            System.out.println("Завантажено складену мапу міст: " + map.size() + " записів");
         } catch (Exception e) { e.printStackTrace(); }
-        return map;
+        Map<String, Object> result = new HashMap<>();
+        result.put("smart", smartMap);
+        return result;
     }
 }

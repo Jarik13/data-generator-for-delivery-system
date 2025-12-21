@@ -44,42 +44,65 @@ public class StreetRepository {
         this.faker = faker;
     }
 
-    public List<ParsedStreet> generateStreets(List<ParsedCity> cities, Map<String, Integer> compositeCityMap) {
-        System.out.println("--- Генерація вулиць ---");
+    public List<ParsedStreet> generateStreets(List<ParsedCity> cities, Map<String, Object> smartCityMap) {
+        @SuppressWarnings("unchecked")
+        Map<String, Map<String, Integer>> smartMap = (Map<String, Map<String, Integer>>) smartCityMap.get("smart");
+
         List<ParsedStreet> streets = new ArrayList<>();
-        int processedCities = 0;
-        int skippedCities = 0;
+        int processed = 0;
+        int skipped = 0;
 
-        for (ParsedCity city : cities) {
-            String apiCityFullName = city.getType() + " " + city.getDescription();
-            String key = CityRepository.buildCompositeKey(
-                    city.getRegion(),
-                    city.getArea(),
-                    apiCityFullName
-            );
+        for (ParsedCity apiCity : cities) {
+            String regKey = CityRepository.normalize(apiCity.getRegion());
+            String cityCleanName = CityRepository.normalize(apiCity.getDescription());
+            String apiDist = CityRepository.normalize(apiCity.getArea());
 
-            Integer cityId = compositeCityMap.get(key);
+            String lookupKey = regKey + "|" + cityCleanName;
+
+            Map<String, Integer> candidates = smartMap.get(lookupKey);
+            if (candidates == null) {
+                for (String fullKey : smartMap.keySet()) {
+                    if (fullKey.startsWith(lookupKey + "|")) {
+                        candidates = smartMap.get(fullKey);
+                        break;
+                    }
+                }
+            }
+
+            Integer cityId = null;
+            if (candidates != null) {
+                if (candidates.size() == 1) {
+                    cityId = candidates.values().iterator().next();
+                } else {
+                    cityId = candidates.get(apiDist);
+                    if (cityId == null) {
+                        for (Map.Entry<String, Integer> entry : candidates.entrySet()) {
+                            if (!entry.getKey().isEmpty() && (entry.getKey().contains(apiDist) || apiDist.contains(entry.getKey()))) {
+                                cityId = entry.getValue();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
 
             if (cityId == null) {
-                skippedCities++;
-                if (skippedCities <= 5) {
-                    System.out.println("DEBUG: Не знайдено місто за ключем: " + key);
-                }
+                skipped++;
                 continue;
             }
 
             int streetsCount = MIN_STREETS_PER_CITY + random.nextInt(MAX_STREETS_PER_CITY - MIN_STREETS_PER_CITY + 1);
             Set<String> usedNames = new HashSet<>();
-
             for (int i = 0; i < streetsCount; i++) {
                 ParsedStreet street = new ParsedStreet();
                 street.setName(generateUniqueStreetName(usedNames));
                 street.setCityId(cityId);
                 streets.add(street);
             }
-            processedCities++;
+            processed++;
         }
-        System.out.printf("=== РЕЗУЛЬТАТ: Оброблено %d міст | Пропущено %d ===\n", processedCities, skippedCities);
+        System.out.printf("=== РЕЗУЛЬТАТ ГЕНЕРАЦІЇ: Оброблено %,d міст | Пропущено %,d | Всього вулиць: %,d ===\n",
+                processed, skipped, streets.size());
         return streets;
     }
 

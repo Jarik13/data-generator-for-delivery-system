@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 public class DistrictRepository {
+
     public void saveDistricts(List<ParsedDistrict> districts, Map<String, Integer> regionMap) {
         System.out.println("--- Збереження районів у БД ---");
         String sql = "INSERT INTO districts (district_name, region_id) VALUES (?, ?)";
@@ -23,35 +24,33 @@ public class DistrictRepository {
                 Integer regionId = regionMap.get(district.getRegionName());
 
                 if (regionId != null) {
+                    // Використовуємо уніфіковане форматування
                     String correctName = formatDistrictName(district.getName());
 
                     ps.setString(1, correctName);
                     ps.setInt(2, regionId);
                     ps.addBatch();
                     count++;
-                } else {
-                    System.out.println("SKIP: Не знайдено область для району: " + district.getName());
                 }
             }
 
             ps.executeBatch();
             conn.commit();
-
             System.out.println("Збережено районів: " + count);
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    private String formatDistrictName(String rawName) {
-        String name = rawName.replace(" р-н", "")
-                .replace(" район", "")
-                .trim();
+    public static String formatDistrictName(String rawName) {
+        if (rawName == null || rawName.isBlank()) return "";
+
+        String name = rawName.trim()
+                .replaceAll("(?i)\\s*(р-н|район)$", "");
 
         if (name.endsWith("а")) {
             name = name.substring(0, name.length() - 1) + "ий";
         }
-
         else if (name.endsWith("я") && !name.equals("Ічня")) {
             name = name.substring(0, name.length() - 1) + "ій";
         }
@@ -81,8 +80,7 @@ public class DistrictRepository {
 
                 String regName = regionIdToName.get(regId);
                 if (regName != null) {
-                    String cleanDist = dbName.replace(" район", "").replace(" р-н", "").trim();
-                    resultMap.put(regName + "_" + cleanDist, id);
+                    resultMap.put(regName + "_" + dbName, id);
                 }
             }
         } catch (SQLException e) {
