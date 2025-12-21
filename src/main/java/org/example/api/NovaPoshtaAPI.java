@@ -3,10 +3,7 @@ package org.example.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.model.DeliveryPoint;
-import org.example.model.parsed.ParsedCargoType;
-import org.example.model.parsed.ParsedCity;
-import org.example.model.parsed.ParsedPack;
-import org.example.model.parsed.ParsedRegion;
+import org.example.model.parsed.*;
 
 import java.math.BigDecimal;
 import java.net.URI;

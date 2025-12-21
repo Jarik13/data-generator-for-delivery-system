@@ -9,8 +9,8 @@ import java.util.Random;
 
 @Slf4j
 public class PersonDataManager {
+    private final Random random;
     private final PersonRepository personRepository;
-    private static final Random random = new Random();
 
     private static final int EMPLOYEES_PER_BRANCH_MIN = 5;
     private static final int EMPLOYEES_PER_BRANCH_MAX = 10;
@@ -24,7 +24,8 @@ public class PersonDataManager {
     private static final int COURIERS_MIN = 30_000;
     private static final int COURIERS_MAX = 75_000;
 
-    public PersonDataManager() {
+    public PersonDataManager(Random random) {
+        this.random = random;
         this.personRepository = new PersonRepository();
     }
 
