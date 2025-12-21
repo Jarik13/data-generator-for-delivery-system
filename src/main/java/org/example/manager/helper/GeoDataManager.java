@@ -29,34 +29,27 @@ public class GeoDataManager {
         long start = System.currentTimeMillis();
 
         try {
-            log.info(">>> [1/5] Завантаження областей...");
+            log.info(">>> [1/5] Обробка областей...");
             List<ParsedRegion> regions = api.getAreas();
             regionRepository.saveRegions(regions);
             Map<String, Integer> regionMap = regionRepository.getRegionNameIdMap();
 
-            log.info(">>> [2/5] Завантаження міст та формування районів...");
+            log.info(">>> [2/5] Завантаження міст з API та формування районів...");
             List<ParsedCity> settlements = api.getSettlements();
-
             List<ParsedDistrict> districts = extractDistrictsFromCities(settlements);
             districtRepository.saveDistricts(districts, regionMap);
             Map<String, Integer> districtMap = districtRepository.getDistrictNameIdMap(regionMap);
 
             log.info(">>> [3/5] Збереження міст у БД...");
             cityRepository.saveCities(settlements, districtMap);
-            Map<String, Object> smartCityMap = cityRepository.getCityMap();
-            Map<String, Map<String, Integer>> smartMap = (Map<String, Map<String, Integer>>) smartCityMap.get("smart");
-            log.info("Завантажено розумну мапу міст: {} унікальних назв у областях", smartMap.size());
 
-            log.info(">>> [4/5] Генерація та збереження вулиць...");
-            List<ParsedStreet> streets = streetRepository.generateStreets(settlements, smartCityMap);
-
-            log.info("Згенеровано вулиць: {}", streets.size());
+            log.info(">>> [4/5] Генерація вулиць на основі даних з БД...");
+            List<Integer> allCityIds = cityRepository.getAllCityIdsFromDb();
+            List<ParsedStreet> streets = streetRepository.generateStreets(allCityIds);
             streetRepository.saveStreets(streets);
 
             log.info(">>> [5/5] Генерація будинків...");
             Map<Integer, List<Integer>> cityStreetMap = streetRepository.getCityStreetMap();
-            log.info("Завантажено мапу місто->вулиці для {} міст", cityStreetMap.size());
-
             addressHouseRepository.saveHouses(cityStreetMap, 10, 50);
 
             long duration = (System.currentTimeMillis() - start) / 1000;

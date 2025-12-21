@@ -24,7 +24,6 @@ public class DistrictRepository {
                 Integer regionId = regionMap.get(district.getRegionName());
 
                 if (regionId != null) {
-                    // Використовуємо уніфіковане форматування
                     String correctName = formatDistrictName(district.getName());
 
                     ps.setString(1, correctName);
@@ -50,11 +49,9 @@ public class DistrictRepository {
 
         if (name.endsWith("а")) {
             name = name.substring(0, name.length() - 1) + "ий";
-        }
-        else if (name.endsWith("я") && !name.equals("Ічня")) {
+        } else if (name.endsWith("я") && !name.equals("Ічня")) {
             name = name.substring(0, name.length() - 1) + "ій";
-        }
-        else if (name.endsWith("е")) {
+        } else if (name.endsWith("е")) {
             name = name.substring(0, name.length() - 1) + "ий";
         }
 
