@@ -1,17 +1,15 @@
 package org.example.repository;
 
+import lombok.RequiredArgsConstructor;
 import org.example.config.DatabaseConfig;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.*;
 
+@RequiredArgsConstructor
 public class AddressHouseRepository {
     private final Random random;
-
-    public AddressHouseRepository(Random random) {
-        this.random = random;
-    }
 
     public void saveHouses(Map<Integer, List<Integer>> cityStreetMap, int housesPerStreetMin, int housesPerStreetMax) {
         System.out.println("--- Генерація та збереження номерів будинків ---");

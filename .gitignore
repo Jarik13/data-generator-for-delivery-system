@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Demo file
+./src/main/java/org/example/MainTestPostomats.java
+
+# Log files
+logs/
+*.log
+

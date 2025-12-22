@@ -31,59 +31,26 @@ public class NovaPoshtaAPI {
     }
 
     public List<ParsedRegion> getAreas() {
-        return getDataFromAPI(
-                "Address",
-                "getAreas",
-                "областей",
-                1,
-                this::parseRegionFromJson
-        );
+        return getDataFromAPI("Address", "getAreas", "областей", 1, this::parseRegionFromJson);
     }
 
     public List<ParsedCity> getSettlements() {
-        return getDataFromAPI(
-                "Address",
-                "getSettlements",
-                "населених пунктів",
-                80,
-                this::parseCityFromJson
-        );
+        return getDataFromAPI("Address", "getSettlements", "населених пунктів", 100, this::parseCityFromJson);
     }
 
     public List<DeliveryPoint> getDeliveryPoints() {
-        return getDataFromAPI(
-                "Address",
-                "getWarehouses",
-                "точок доставки",
-                100,
-                this::parseDeliveryPointFromJson
-        );
+        return getDataFromAPI("Address", "getWarehouses", "точок доставки", 150, this::parseDeliveryPointFromJson);
     }
 
     public List<ParsedCargoType> getCargoTypes() {
-        return getListNoPagination(
-                "Common",
-                "getCargoTypes",
-                "типів вантажу",
-                this::parseCargoTypeFromJson
-        );
+        return getListNoPagination("Common", "getCargoTypes", "типів вантажу", this::parseCargoTypeFromJson);
     }
 
     public List<ParsedPack> getPackList() {
-        return getListNoPagination(
-                "Common",
-                "getPackList",
-                "типів пакування",
-                this::parsePackFromJson
-        );
+        return getListNoPagination("Common", "getPackList", "типів пакування", this::parsePackFromJson);
     }
 
-    private <T> List<T> getListNoPagination(
-            String modelName,
-            String methodName,
-            String entityName,
-            Function<JsonNode, T> parser) {
-
+    private <T> List<T> getListNoPagination(String modelName, String methodName, String entityName, Function<JsonNode, T> parser) {
         List<T> results = new ArrayList<>();
         try {
             String jsonBody = """
@@ -107,12 +74,9 @@ public class NovaPoshtaAPI {
             if (data.isArray()) {
                 for (JsonNode item : data) {
                     T parsedItem = parser.apply(item);
-                    if (parsedItem != null) {
-                        results.add(parsedItem);
-                    }
+                    if (parsedItem != null) results.add(parsedItem);
                 }
             }
-
             System.out.printf("=== Всього отримано %d %s (одним запитом) ===%n", results.size(), entityName);
         } catch (Exception e) {
             System.err.println("Exception fetching " + entityName + ": " + e.getMessage());
@@ -120,74 +84,76 @@ public class NovaPoshtaAPI {
         return results;
     }
 
-    private <T> List<T> getDataFromAPI(
-            String modelName,
-            String methodName,
-            String entityName,
-            int maxPages,
-            Function<JsonNode, T> parser) {
-
+    private <T> List<T> getDataFromAPI(String modelName, String methodName, String entityName, int maxPages, Function<JsonNode, T> parser) {
         List<T> results = new ArrayList<>();
         int page = 1;
-        int emptyPagesCount = 0;
         int limit = 500;
 
         while (page <= maxPages) {
-            try {
-                String jsonBody = """
-                    {
-                        "apiKey": "%s",
-                        "modelName": "%s",
-                        "calledMethod": "%s",
-                        "methodProperties": {
-                            "Page": "%d",
-                            "Limit": "%d"
+            int retryCount = 0;
+            boolean pageSuccess = false;
+
+            while (retryCount < 3 && !pageSuccess) {
+                try {
+                    String jsonBody = """
+                        {
+                            "apiKey": "%s",
+                            "modelName": "%s",
+                            "calledMethod": "%s",
+                            "methodProperties": {
+                                "Page": "%d",
+                                "Limit": "%d"
+                            }
+                        }
+                        """.formatted(API_KEY, modelName, methodName, page, limit);
+
+                    HttpRequest request = createHttpRequest(jsonBody);
+                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    JsonNode root = objectMapper.readTree(response.body());
+
+                    if (root.has("success") && !root.get("success").asBoolean()) {
+                        System.err.println("API Error on page " + page + ": " + root.path("errors"));
+                        Thread.sleep(5000);
+                        retryCount++;
+                        continue;
+                    }
+
+                    JsonNode data = root.path("data");
+                    if (!data.isArray() || data.isEmpty()) {
+                        return results;
+                    }
+
+                    int itemsAdded = 0;
+                    for (JsonNode item : data) {
+                        T parsedItem = parser.apply(item);
+                        if (parsedItem != null) {
+                            results.add(parsedItem);
+                            itemsAdded++;
                         }
                     }
-                    """.formatted(API_KEY, modelName, methodName, page, limit);
 
-                HttpRequest request = createHttpRequest(jsonBody);
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                JsonNode root = objectMapper.readTree(response.body());
+                    System.out.println("Сторінка " + page + ": завантажено " + itemsAdded + " " + entityName + ".");
 
-                if (root.has("success") && !root.get("success").asBoolean()) {
-                    System.err.println("API Error on page " + page + ": " + root.path("errors"));
-                    Thread.sleep(5000);
-                    continue;
+                    pageSuccess = true;
+                    if (itemsAdded < limit && page > 1) return results;
+
+                } catch (Exception e) {
+                    retryCount++;
+                    System.err.println("Помилка на сторінці " + page + " (спроба " + retryCount + "/3): " + e.getMessage());
+                    try {
+                        Thread.sleep(3000L * retryCount);
+                    } catch (InterruptedException ignored) {}
                 }
-
-                JsonNode data = root.path("data");
-                if (!data.isArray() || data.isEmpty()) {
-                    emptyPagesCount++;
-                    if (emptyPagesCount > 1) break;
-                } else {
-                    emptyPagesCount = 0;
-                }
-
-                int itemsAdded = 0;
-                for (JsonNode item : data) {
-                    T parsedItem = parser.apply(item);
-                    if (parsedItem != null) {
-                        results.add(parsedItem);
-                        itemsAdded++;
-                    }
-                }
-
-                System.out.println("Сторінка " + page + ": завантажено " + itemsAdded + " " + entityName + ".");
-
-                if (itemsAdded < limit && page > 1) break;
-
-                page++;
-
-                Thread.sleep(1500);
-            } catch (Exception e) {
-                System.err.println("Exception on page " + page + ": " + e.getMessage());
-                try {
-                    Thread.sleep(10000);
-                }
-                catch (InterruptedException _) { }
-                break;
             }
+
+            if (!pageSuccess) {
+                System.err.println("Критична помилка: не вдалося завантажити сторінку " + page + " після 3 спроб. Пропускаємо.");
+            }
+
+            page++;
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException ignored) {}
         }
         System.out.printf("=== Всього отримано %d %s ===%n", results.size(), entityName);
         return results;

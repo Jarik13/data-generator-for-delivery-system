@@ -1,5 +1,6 @@
 package org.example.repository;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.config.DatabaseConfig;
 import org.example.model.DeliveryPoint;
@@ -10,19 +11,20 @@ import java.util.Map;
 import java.util.Random;
 
 @Slf4j
+@RequiredArgsConstructor
 public class DeliveryPointRepository {
     private final Random random;
     private int defaultDistrictId = -1;
 
-    public DeliveryPointRepository(Random random) {
-        this.random = random;
-    }
+    private static final String REF_TYPE_CARGO = "6f8c0829-0676-11e4-80cf-005056801329";
+    private static final String REF_TYPE_POST_OFFICE = "9a674f35-4e5c-11e4-81e0-005056801329";
+    private static final String REF_TYPE_POSTOMAT = "f9316480-5f2d-425d-bc2c-ac7cd29decf0";
+    private static final String REF_TYPE_MINI = "ef757832-4091-11e4-81e0-005056801329";
+    private static final String REF_TYPE_MOBILE = "95dc2124-da4b-11e5-837d-005056801329";
 
     private static final String INSERT_PARENT = "INSERT INTO delivery_points (delivery_point_name, delivery_point_address, city_id) VALUES (?, ?, ?)";
     private static final String INSERT_BRANCH = "INSERT INTO branches (delivery_point_id, branch_type_id) VALUES (?, ?)";
-    private static final String INSERT_POSTOMAT = "INSERT INTO postomats (delivery_point_id, postomat_code, postomat_cells_count, is_active) VALUES (?, ?, ?, 1)";
-
-    private static final String REF_POSTOMAT = "f9316480-5f2d-425d-bc2c-ac7cd29decf0";
+    private static final String INSERT_POSTOMAT = "INSERT INTO postomats (delivery_point_id, postomat_code, postomat_cells_count, is_active) VALUES (?, ?, ?, ?)";
 
     public void saveDeliveryPoints(List<DeliveryPoint> points, Map<String, Integer> cityMap) {
         log.info("--- Початок збереження точок доставки у БД. Кількість: {} ---", points.size());
@@ -34,130 +36,137 @@ public class DeliveryPointRepository {
 
             conn.setAutoCommit(false);
             int count = 0;
-            int createdCities = 0;
-            int saved = 0;
+            int savedBranches = 0;
+            int savedPostomats = 0;
 
             for (DeliveryPoint point : points) {
-                if (count % 5000 == 0 && count > 0) {
-                    log.info("... оброблено {} точок ...", count);
-                }
-
                 Integer cityId = findCityId(point.getCity(), cityMap);
 
                 if (cityId == null) {
                     try {
                         cityId = createCity(conn, point.getCity());
-                        cityMap.put(point.getCity(), cityId);
-                        createdCities++;
+                        cityMap.put(CityRepository.normalize(point.getCity()), cityId);
                     } catch (SQLException e) {
-                        log.error("Не вдалося створити місто '{}': {}", point.getCity(), e.getMessage());
                         continue;
                     }
                 }
 
                 try {
-                    psParent.setString(1, point.getName());
+                    String cleanPointName = cleanName(point.getName());
+                    psParent.setString(1, cleanPointName);
                     psParent.setString(2, point.getAddress());
                     psParent.setInt(3, cityId);
+                    psParent.executeUpdate();
 
-                    int affectedRows = psParent.executeUpdate();
+                    try (ResultSet generatedKeys = psParent.getGeneratedKeys()) {
+                        if (generatedKeys.next()) {
+                            int deliveryPointId = generatedKeys.getInt(1);
 
-                    if (affectedRows > 0) {
-                        try (ResultSet generatedKeys = psParent.getGeneratedKeys()) {
-                            if (generatedKeys.next()) {
-                                int deliveryPointId = generatedKeys.getInt(1);
-
-                                if (isPostomat(point)) {
-                                    saveAsPostomat(psPostomat, deliveryPointId, point);
-                                } else {
-                                    saveAsBranch(psBranch, deliveryPointId, point);
-                                }
-                                saved++;
+                            if (isPostomat(point)) {
+                                saveAsPostomat(psPostomat, deliveryPointId, point);
+                                savedPostomats++;
+                            } else {
+                                saveAsBranch(psBranch, deliveryPointId, point);
+                                savedBranches++;
                             }
                         }
                     }
-                    count++;
                 } catch (SQLException e) {
-                    log.error("Помилка при збереженні точки '{}': {}", point.getName(), e.getMessage());
+                    log.error("Помилка при збереженні '{}': {}", point.getName(), e.getMessage());
+                }
+
+                if (++count % 1000 == 0) {
+                    conn.commit();
+                    log.info("... оброблено {} точок (Відділень: {}, Поштоматів: {}) ...", count, savedBranches, savedPostomats);
                 }
             }
 
             conn.commit();
-            log.info("Транзакцію завершено. Отримано: {}, Збережено: {}, Створено нових міст: {}",
-                    points.size(), saved, createdCities);
+            log.info("Імпорт завершено. Всього збережено відділень: {}, поштоматів: {}", savedBranches, savedPostomats);
         } catch (SQLException e) {
-            log.error("Критична помилка при збереженні точок доставки", e);
+            log.error("Критична помилка БД", e);
         }
     }
 
+    private void saveAsPostomat(PreparedStatement ps, int parentId, DeliveryPoint point) throws SQLException {
+        ps.setInt(1, parentId);
+        ps.setString(2, point.getRef());
+        ps.setInt(3, 20 + random.nextInt(60));
+
+        int isActive = (random.nextDouble() < 0.9) ? 1 : 0;
+        ps.setInt(4, isActive);
+
+        ps.executeUpdate();
+    }
+
+    private void saveAsBranch(PreparedStatement ps, int parentId, DeliveryPoint point) throws SQLException {
+        ps.setInt(1, parentId);
+        int typeId;
+        String typeRef = point.getTypeRef();
+        String nameLower = point.getName().toLowerCase();
+
+        if (REF_TYPE_CARGO.equals(typeRef)) typeId = 1;
+        else if (REF_TYPE_POST_OFFICE.equals(typeRef)) typeId = 2;
+        else if (REF_TYPE_MOBILE.equals(typeRef) || nameLower.contains("мобільне")) typeId = 4;
+        else if (REF_TYPE_MINI.equals(typeRef) || nameLower.contains("mini") || nameLower.contains("point")) typeId = 5;
+        else if (nameLower.contains("приймання-видачі")) typeId = 3;
+        else if (nameLower.contains("пункт")) typeId = 6;
+        else typeId = 2;
+
+        ps.setInt(2, typeId);
+        ps.executeUpdate();
+    }
+
+    private boolean isPostomat(DeliveryPoint point) {
+        return point.getTypeRef().equalsIgnoreCase(REF_TYPE_POSTOMAT)
+               || point.getName().toLowerCase().contains("поштомат");
+    }
+
+    private String cleanName(String name) {
+        if (name == null) return "";
+        return name.contains(":") ? name.split(":")[0].trim() : name.trim();
+    }
+
+    private Integer findCityId(String rawCityName, Map<String, Integer> cityMap) {
+        if (rawCityName == null || rawCityName.isBlank()) return null;
+        String normName = CityRepository.normalize(rawCityName);
+        if (cityMap.containsKey(normName)) return cityMap.get(normName);
+        String cleanName = rawCityName.contains("(") ? rawCityName.substring(0, rawCityName.indexOf("(")).trim() : rawCityName.trim();
+        String normClean = CityRepository.normalize(cleanName);
+        if (cityMap.containsKey(normClean)) return cityMap.get(normClean);
+        for (Map.Entry<String, Integer> entry : cityMap.entrySet()) {
+            if (entry.getKey().contains(normClean)) return entry.getValue();
+        }
+        return null;
+    }
+
     private int createCity(Connection conn, String rawName) throws SQLException {
-        String cityName = rawName;
-        if (cityName.contains("(")) {
-            cityName = cityName.substring(0, cityName.indexOf("(")).trim();
-        }
-
+        String cityName = rawName.contains("(") ? rawName.substring(0, rawName.indexOf("(")).trim() : rawName.trim();
         int distId = findCorrectDistrictId(conn, rawName);
-
-        if (distId == -1) {
-            log.warn("Район не знайдено для '{}'. Використовую дефолтний.", rawName);
-            distId = getDefaultDistrictId(conn);
-        }
-
+        if (distId == -1) distId = getDefaultDistrictId(conn);
         String sql = "INSERT INTO cities (city_name, district_id) VALUES (?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, cityName);
             ps.setInt(2, distId);
             ps.executeUpdate();
-
             try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                }
+                if (rs.next()) return rs.getInt(1);
             }
         }
-        throw new SQLException("Не вдалося створити місто: " + cityName);
+        throw new SQLException("Failed to create city");
     }
 
     private int findCorrectDistrictId(Connection conn, String rawCityName) {
-        String searchPattern = "";
-
+        String distName = "";
         if (rawCityName.contains("(") && rawCityName.contains("р-н")) {
-            int start = rawCityName.indexOf("(") + 1;
-            int end = rawCityName.indexOf("р-н");
-            if (end > start) {
-                String distName = rawCityName.substring(start, end).trim();
-                int id = queryDistrictId(conn, distName + " район");
-                if (id != -1) return id;
-
-                searchPattern = distName + "%";
-            }
+            distName = rawCityName.substring(rawCityName.indexOf("(") + 1, rawCityName.indexOf("р-н")).trim();
+        } else if (rawCityName.contains("(") && rawCityName.contains("район")) {
+            distName = rawCityName.substring(rawCityName.indexOf("(") + 1, rawCityName.indexOf("район")).trim();
         }
-
-        if (searchPattern.isEmpty()) {
-            String cleanName = rawCityName;
-            if (cleanName.contains("(")) cleanName = cleanName.substring(0, cleanName.indexOf("("));
-            cleanName = cleanName.trim();
-
-            int id = queryDistrictId(conn, cleanName + " район");
-            if (id != -1) return id;
-
-            if (cleanName.length() >= 4) {
-                searchPattern = cleanName.substring(0, Math.min(cleanName.length(), 5)) + "%";
-            }
+        if (!distName.isEmpty()) {
+            String formattedDist = DistrictRepository.formatDistrictName(distName);
+            return queryDistrictId(conn, formattedDist);
         }
-
-        if (!searchPattern.isEmpty()) {
-            String sql = "SELECT TOP 1 district_id FROM districts WHERE district_name LIKE ?";
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, searchPattern);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) return rs.getInt(1);
-                }
-            } catch (SQLException e) {
-                log.warn("Помилка пошуку району LIKE: {}", e.getMessage());
-            }
-        }
-
         return -1;
     }
 
@@ -169,7 +178,7 @@ public class DeliveryPointRepository {
                 if (rs.next()) return rs.getInt(1);
             }
         } catch (SQLException e) {
-            log.warn("Помилка пошуку району exact: {}", e.getMessage());
+            log.warn("District search error: {}", e.getMessage());
         }
         return -1;
     }
@@ -177,67 +186,12 @@ public class DeliveryPointRepository {
     private int getDefaultDistrictId(Connection conn) throws SQLException {
         if (defaultDistrictId != -1) return defaultDistrictId;
         String sql = "SELECT TOP 1 district_id FROM districts";
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
                 defaultDistrictId = rs.getInt(1);
                 return defaultDistrictId;
             }
         }
-        throw new SQLException("Таблиця districts порожня! Неможливо створити нове місто.");
-    }
-
-    private Integer findCityId(String rawCityName, Map<String, Integer> cityMap) {
-        if (rawCityName == null || rawCityName.isBlank()) return null;
-        String name = rawCityName.trim();
-
-        if (name.contains("(")) {
-            name = name.substring(0, name.indexOf("(")).trim();
-        }
-
-        if (cityMap.containsKey(name)) return cityMap.get(name);
-        if (cityMap.containsKey("місто " + name)) return cityMap.get("місто " + name);
-        if (cityMap.containsKey("м. " + name)) return cityMap.get("м. " + name);
-        if (cityMap.containsKey("село " + name)) return cityMap.get("село " + name);
-        if (cityMap.containsKey("с. " + name)) return cityMap.get("с. " + name);
-        if (cityMap.containsKey("смт " + name)) return cityMap.get("смт " + name);
-        if (cityMap.containsKey("селище міського типу " + name)) return cityMap.get("селище міського типу " + name);
-
-        String suffixSpace = " " + name.toLowerCase();
-        for (Map.Entry<String, Integer> entry : cityMap.entrySet()) {
-            String keyLower = entry.getKey().toLowerCase();
-            if (keyLower.equals(name.toLowerCase()) || keyLower.endsWith(suffixSpace)) {
-                return entry.getValue();
-            }
-        }
-        return null;
-    }
-
-    private boolean isPostomat(DeliveryPoint point) {
-        if (point.getTypeRef() != null && point.getTypeRef().equals(REF_POSTOMAT)) {
-            return true;
-        }
-        return point.getName().toLowerCase().contains("поштомат");
-    }
-
-    private void saveAsPostomat(PreparedStatement ps, int parentId, DeliveryPoint point) throws SQLException {
-        ps.setInt(1, parentId);
-        String code = String.valueOf(parentId);
-        ps.setString(2, code);
-        ps.setInt(3, 20 + random.nextInt(60));
-        ps.executeUpdate();
-    }
-
-    private void saveAsBranch(PreparedStatement ps, int parentId, DeliveryPoint point) throws SQLException {
-        ps.setInt(1, parentId);
-        int typeId = 2;
-        String nameLower = point.getName().toLowerCase();
-        if (nameLower.contains("вантажне") || nameLower.contains("1000 кг") || nameLower.contains("1100 кг")) {
-            typeId = 1;
-        } else if (nameLower.contains("mini") || nameLower.contains("point") || nameLower.contains("shop")) {
-            typeId = 3;
-        }
-        ps.setInt(2, typeId);
-        ps.executeUpdate();
+        throw new SQLException("Districts table is empty!");
     }
 }

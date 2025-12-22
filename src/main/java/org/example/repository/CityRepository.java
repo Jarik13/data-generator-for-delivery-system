@@ -19,6 +19,34 @@ public class CityRepository {
         return name + " район";
     }
 
+    public static String normalize(String text) {
+        if (text == null || text.isBlank()) return "";
+
+        String extra = "";
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\((.*?)\\)").matcher(text);
+        if (m.find()) {
+            extra = m.group(1).toLowerCase()
+                    .replaceAll("(сільська|селищна|міська|рада|тг|громада|територіальна)", "")
+                    .replaceAll("[^а-яіїєґ0-9]", "").trim();
+        }
+
+        String t = text.replaceAll("\\(.*?\\)", "").toLowerCase().trim();
+
+        t = t.replaceAll("^(місто|село|селище|смт|м\\.|с\\.|селище міського типу|міського типу)\\s+", "");
+        t = t.replaceAll("\\s+(район|р-н|область)$", "");
+
+        t = t.replace("'", "").replace("’", "").replace("`", "");
+        t = t.replace("i", "і").replace("y", "і").replace("и", "і").replace("ї", "і").replace("є", "е");
+
+        t = t.replaceAll("[^а-яіїєґ0-9]", "");
+
+        t = t.replaceAll("(івська|івський|івське|ська|ський|ське|ий|а|е|я|о|ь)$", "");
+
+        t = t.replace("ж", "з").replace("ц", "с");
+
+        return t.trim() + (extra.isEmpty() ? "" : "|" + extra);
+    }
+
     public void saveCities(List<ParsedCity> cities, Map<String, Integer> districtMap) {
         System.out.println("--- Збереження населених пунктів у БД ---");
         String sql = "INSERT INTO cities (city_name, district_id) VALUES (?, ?)";

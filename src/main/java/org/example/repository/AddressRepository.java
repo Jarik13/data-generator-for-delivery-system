@@ -1,16 +1,14 @@
 package org.example.repository;
 
+import lombok.RequiredArgsConstructor;
 import org.example.config.DatabaseConfig;
 import java.sql.*;
 import java.util.Random;
 
+@RequiredArgsConstructor
 public class AddressRepository {
     private final Random random;
     private static final int BATCH_SIZE = 50000;
-
-    public AddressRepository(Random random) {
-        this.random = random;
-    }
 
     public int[] getHouseIdRange() {
         int[] range = {0, 0};
