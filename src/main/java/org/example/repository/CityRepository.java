@@ -2,33 +2,21 @@ package org.example.repository;
 
 import org.example.config.DatabaseConfig;
 import org.example.model.parsed.ParsedCity;
+
 import java.sql.*;
 import java.util.*;
 
 public class CityRepository {
     public static String prepareDistrictName(String rawName) {
         if (rawName == null || rawName.isBlank()) return "";
+
         String name = rawName.trim();
-        if (name.endsWith("а")) name = name.substring(0, name.length() - 1) + "ий";
-        else if (name.endsWith("е")) name = name.substring(0, name.length() - 1) + "ий";
+        if (name.endsWith("а") || name.endsWith("е")) {
+            name = name.substring(0, name.length() - 1) + "ий";
+        }
 
         name = name.replaceAll("(?i)\\s*(р-н|район)$", "").trim();
         return name + " район";
-    }
-
-    public Map<Integer, String> getAllCityDataFromDb() {
-        Map<Integer, String> cityData = new HashMap<>();
-        String sql = "SELECT city_id, city_name FROM cities";
-        try (Connection conn = DatabaseConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                cityData.put(rs.getInt("city_id"), rs.getString("city_name"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return cityData;
     }
 
     public void saveCities(List<ParsedCity> cities, Map<String, Integer> districtMap) {
@@ -68,5 +56,35 @@ public class CityRepository {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public Map<Integer, String> getAllCityDataFromDb() {
+        Map<Integer, String> cityData = new HashMap<>();
+        String sql = "SELECT city_id, city_name FROM cities";
+        try (Connection conn = DatabaseConfig.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                cityData.put(rs.getInt("city_id"), rs.getString("city_name"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return cityData;
+    }
+
+    public Map<String, Integer> getCityNameIdMap() {
+        Map<String, Integer> map = new HashMap<>();
+        try (Connection conn = DatabaseConfig.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT city_id, city_name FROM cities")) {
+            while (rs.next()) {
+                map.put(rs.getString("city_name"), rs.getInt("city_id"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return map;
     }
 }

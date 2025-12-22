@@ -25,7 +25,7 @@ public class NovaPoshtaAPI {
 
     public NovaPoshtaAPI() {
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
+                .connectTimeout(Duration.ofSeconds(30))
                 .build();
         this.objectMapper = new ObjectMapper();
     }
@@ -112,8 +112,8 @@ public class NovaPoshtaAPI {
                     }
                 }
             }
-            System.out.printf("=== Всього отримано %d %s (одним запитом) ===%n", results.size(), entityName);
 
+            System.out.printf("=== Всього отримано %d %s (одним запитом) ===%n", results.size(), entityName);
         } catch (Exception e) {
             System.err.println("Exception fetching " + entityName + ": " + e.getMessage());
         }
@@ -152,7 +152,7 @@ public class NovaPoshtaAPI {
 
                 if (root.has("success") && !root.get("success").asBoolean()) {
                     System.err.println("API Error on page " + page + ": " + root.path("errors"));
-                    Thread.sleep(2000);
+                    Thread.sleep(5000);
                     continue;
                 }
 
@@ -178,9 +178,14 @@ public class NovaPoshtaAPI {
                 if (itemsAdded < limit && page > 1) break;
 
                 page++;
-                Thread.sleep(200);
+
+                Thread.sleep(1500);
             } catch (Exception e) {
                 System.err.println("Exception on page " + page + ": " + e.getMessage());
+                try {
+                    Thread.sleep(10000);
+                }
+                catch (InterruptedException _) { }
                 break;
             }
         }
@@ -192,6 +197,7 @@ public class NovaPoshtaAPI {
         return HttpRequest.newBuilder()
                 .uri(URI.create(API_URL))
                 .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(60))
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
     }

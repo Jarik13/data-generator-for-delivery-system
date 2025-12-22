@@ -9,7 +9,6 @@ import java.util.List;
 
 @RequiredArgsConstructor
 public class ParcelTypeRepository {
-
     private static final String CHECK_EXISTS_SQL = "SELECT parcel_type_id FROM parcel_types WHERE parcel_type_name = ?";
     private static final String INSERT_SQL = "INSERT INTO parcel_types (parcel_type_name) VALUES (?)";
 
@@ -37,7 +36,6 @@ public class ParcelTypeRepository {
                 psInsert.executeBatch();
                 conn.commit();
                 System.out.println("Додано записів у parcel_types: " + count);
-
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;

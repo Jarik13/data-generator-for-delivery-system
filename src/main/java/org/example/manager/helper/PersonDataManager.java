@@ -1,5 +1,6 @@
 package org.example.manager.helper;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.repository.PersonRepository;
 
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Random;
 
 @Slf4j
+@RequiredArgsConstructor
 public class PersonDataManager {
     private final Random random;
     private final PersonRepository personRepository;
@@ -23,11 +25,6 @@ public class PersonDataManager {
 
     private static final int COURIERS_MIN = 30_000;
     private static final int COURIERS_MAX = 75_000;
-
-    public PersonDataManager(Random random) {
-        this.random = random;
-        this.personRepository = new PersonRepository();
-    }
 
     public void generateAllPeople() {
         System.out.println("=== ПОЧАТОК ГЕНЕРАЦІЇ ЛЮДЕЙ ===");

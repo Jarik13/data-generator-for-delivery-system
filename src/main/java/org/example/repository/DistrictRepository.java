@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 
 public class DistrictRepository {
-
     public void saveDistricts(List<ParsedDistrict> districts, Map<String, Integer> regionMap) {
         System.out.println("--- Збереження районів у БД ---");
         String sql = "INSERT INTO districts (district_name, region_id) VALUES (?, ?)";
@@ -47,12 +46,10 @@ public class DistrictRepository {
         String name = rawName.trim()
                 .replaceAll("(?i)\\s*(р-н|район)$", "");
 
-        if (name.endsWith("а")) {
+        if (name.endsWith("а") || name.endsWith("е")) {
             name = name.substring(0, name.length() - 1) + "ий";
         } else if (name.endsWith("я") && !name.equals("Ічня")) {
             name = name.substring(0, name.length() - 1) + "ій";
-        } else if (name.endsWith("е")) {
-            name = name.substring(0, name.length() - 1) + "ий";
         }
 
         return name + " район";

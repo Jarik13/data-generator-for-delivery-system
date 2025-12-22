@@ -7,11 +7,16 @@ import java.sql.PreparedStatement;
 import java.util.*;
 
 public class AddressHouseRepository {
+    private final Random random;
+
+    public AddressHouseRepository(Random random) {
+        this.random = random;
+    }
+
     public void saveHouses(Map<Integer, List<Integer>> cityStreetMap, int housesPerStreetMin, int housesPerStreetMax) {
         System.out.println("--- Генерація та збереження номерів будинків ---");
         String sql = "INSERT INTO address_houses (address_house_number, street_id) VALUES (?, ?)";
 
-        Random random = new Random();
         int totalGenerated = 0;
         int streetCount = 0;
 

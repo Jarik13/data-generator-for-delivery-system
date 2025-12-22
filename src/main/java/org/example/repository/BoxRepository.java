@@ -60,7 +60,6 @@ public class BoxRepository {
                 psVariant.executeBatch();
                 conn.commit();
                 System.out.println("Збережено варіантів пакування: " + count);
-
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;

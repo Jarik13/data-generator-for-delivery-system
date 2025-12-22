@@ -1,5 +1,6 @@
 package org.example.manager.helper;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.api.NovaPoshtaAPI;
 import org.example.model.DeliveryPoint;
@@ -7,15 +8,11 @@ import org.example.repository.DeliveryPointRepository;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 @Slf4j
+@RequiredArgsConstructor
 public class DeliveryPointDataManager {
     private final DeliveryPointRepository deliveryPointRepository;
-
-    public DeliveryPointDataManager(Random random) {
-        this.deliveryPointRepository = new DeliveryPointRepository(random);
-    }
 
     public void importDeliveryPoints(NovaPoshtaAPI api, Map<String, Integer> cityMap) {
         log.info("=== ПОЧАТОК ЗАВАНТАЖЕННЯ ТОЧОК ДОСТАВКИ ===");

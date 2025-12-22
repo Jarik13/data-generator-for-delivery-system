@@ -1,7 +1,7 @@
 package org.example.manager.helper;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.datafaker.Faker;
 import org.example.api.NovaPoshtaAPI;
 import org.example.model.parsed.*;
 import org.example.repository.*;
@@ -9,6 +9,7 @@ import org.example.repository.*;
 import java.util.*;
 
 @Slf4j
+@RequiredArgsConstructor
 public class GeoDataManager {
     private final RegionRepository regionRepository;
     private final DistrictRepository districtRepository;
@@ -16,15 +17,6 @@ public class GeoDataManager {
     private final StreetRepository streetRepository;
     private final AddressHouseRepository addressHouseRepository;
     private final AddressRepository addressRepository;
-
-    public GeoDataManager(Random random, Faker faker) {
-        this.regionRepository = new RegionRepository();
-        this.districtRepository = new DistrictRepository();
-        this.cityRepository = new CityRepository();
-        this.streetRepository = new StreetRepository(random, faker);
-        this.addressHouseRepository = new AddressHouseRepository();
-        this.addressRepository = new AddressRepository(random);
-    }
 
     public void importGeography(NovaPoshtaAPI api) {
         log.info("=== ПОЧАТОК ІМПОРТУ ГЕОГРАФІЇ ===");
@@ -63,6 +55,10 @@ public class GeoDataManager {
         } catch (Exception e) {
             log.error("КРИТИЧНА ПОМИЛКА ПРИ ІМПОРТІ ГЕОГРАФІЇ", e);
         }
+    }
+
+    public Map<String, Integer> getCityMap() {
+        return cityRepository.getCityNameIdMap();
     }
 
     private List<ParsedDistrict> extractDistrictsFromCities(List<ParsedCity> cities) {

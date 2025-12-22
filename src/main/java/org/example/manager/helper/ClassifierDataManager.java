@@ -1,5 +1,6 @@
 package org.example.manager.helper;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.api.NovaPoshtaAPI;
 import org.example.model.parsed.ParsedCargoType;
@@ -9,19 +10,13 @@ import org.example.repository.ParcelTypeRepository;
 import org.example.repository.StaticDataRepository;
 
 import java.util.List;
-import java.util.Random;
 
 @Slf4j
+@RequiredArgsConstructor
 public class ClassifierDataManager {
     private final BoxRepository boxRepository;
     private final ParcelTypeRepository parcelTypeRepository;
     private final StaticDataRepository staticDataRepository;
-
-    public ClassifierDataManager(Random random) {
-        this.boxRepository = new BoxRepository(random);
-        this.parcelTypeRepository = new ParcelTypeRepository();
-        this.staticDataRepository = new StaticDataRepository();
-    }
 
     public void importClassifiers(NovaPoshtaAPI api) {
         log.info("=== ПОЧАТОК ІМПОРТУ КЛАСИФІКАТОРІВ ===");
