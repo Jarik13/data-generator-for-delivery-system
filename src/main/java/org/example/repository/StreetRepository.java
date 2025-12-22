@@ -80,41 +80,42 @@ public class StreetRepository {
     private int determineStreetCount(String cityName) {
         String name = cityName.toLowerCase();
 
-        if (name.contains("київ")) return STREETS_KYIV;
+        boolean isCity = name.startsWith("місто") || name.startsWith("м.");
+        if (isCity) {
+            if (name.contains("київ")) return STREETS_KYIV;
 
-        if (name.contains("харків")) return STREETS_KHARKIV;
+            if (name.contains("харків")) return STREETS_KHARKIV;
 
-        if (name.contains("одеса") || name.contains("дніпро") ||
-            name.contains("львів") || name.contains("донецьк")) {
-            return STREETS_METROPOLIS;
-        }
+            if (name.contains("одеса") || name.contains("дніпро") ||
+                name.contains("львів") || name.contains("донецьк")) {
+                return STREETS_METROPOLIS;
+            }
 
-        if (name.contains("запоріжжя") || name.contains("кривий ріг") ||
-            name.contains("миколаїв") || name.contains("маріуполь") ||
-            name.contains("луганськ")) {
-            return STREETS_LARGE_CENTER;
-        }
+            if (name.contains("запоріжжя") || name.contains("кривий ріг") ||
+                name.contains("миколаїв") || name.contains("маріуполь") ||
+                name.contains("луганськ")) {
+                return STREETS_LARGE_CENTER;
+            }
 
-        if (name.contains("полтава") || name.contains("вінниця") ||
-            name.contains("житомир") || name.contains("чернігів") ||
-            name.contains("черкаси") || name.contains("хмельницький") ||
-            name.contains("суми") || name.contains("рівне") ||
-            name.contains("івано-франківськ") || name.contains("тернопіль") ||
-            name.contains("луцьк") || name.contains("біла церква") ||
-            name.contains("кропивницький") || name.contains("херсон") ||
-            name.contains("чернівці") || name.contains("ужгород")) {
-            return STREETS_REGIONAL_CENTER;
-        }
+            if (name.contains("полтава") || name.contains("вінниця") ||
+                name.contains("житомир") || name.contains("чернігів") ||
+                name.contains("черкаси") || name.contains("хмельницький") ||
+                name.contains("суми") || name.contains("рівне") ||
+                name.contains("івано-франківськ") || name.contains("тернопіль") ||
+                name.contains("луцьк") || name.contains("біла церква") ||
+                name.contains("кропивницький") || name.contains("херсон") ||
+                name.contains("чернівці") || name.contains("ужгород")) {
+                return STREETS_REGIONAL_CENTER;
+            }
 
-        if (name.contains("кременчук") || name.contains("кам'янське") ||
-            name.contains("краматорськ") || name.contains("мелітополь") ||
-            name.contains("бердянськ") || name.contains("нікополь") ||
-            name.contains("слов'янськ") || name.contains("бровари") ||
-            name.contains("павлоград") || name.contains("уман")) {
-            return STREETS_BIG_CITY;
-        }
+            if (name.contains("кременчук") || name.contains("кам'янське") ||
+                name.contains("краматорськ") || name.contains("мелітополь") ||
+                name.contains("бердянськ") || name.contains("нікополь") ||
+                name.contains("слов'янськ") || name.contains("бровари") ||
+                name.contains("павлоград") || name.contains("уман")) {
+                return STREETS_BIG_CITY;
+            }
 
-        if (name.startsWith("місто")) {
             return CITY_MIN + random.nextInt(CITY_MAX - CITY_MIN + 1);
         }
 
