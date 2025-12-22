@@ -44,8 +44,8 @@ public class GeoDataManager {
             cityRepository.saveCities(settlements, districtMap);
 
             log.info(">>> [4/5] Генерація вулиць на основі даних з БД...");
-            List<Integer> allCityIds = cityRepository.getAllCityIdsFromDb();
-            List<ParsedStreet> streets = streetRepository.generateStreets(allCityIds);
+            Map<Integer, String> cityData = cityRepository.getAllCityDataFromDb();
+            List<ParsedStreet> streets = streetRepository.generateStreets(cityData);
             streetRepository.saveStreets(streets);
 
             log.info(">>> [5/5] Генерація будинків...");

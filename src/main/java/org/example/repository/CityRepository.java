@@ -16,20 +16,19 @@ public class CityRepository {
         return name + " район";
     }
 
-    public List<Integer> getAllCityIdsFromDb() {
-        List<Integer> ids = new ArrayList<>();
-        String sql = "SELECT city_id FROM cities";
+    public Map<Integer, String> getAllCityDataFromDb() {
+        Map<Integer, String> cityData = new HashMap<>();
+        String sql = "SELECT city_id, city_name FROM cities";
         try (Connection conn = DatabaseConfig.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                ids.add(rs.getInt("city_id"));
+                cityData.put(rs.getInt("city_id"), rs.getString("city_name"));
             }
-            System.out.println("Отримано з БД " + ids.size() + " ідентифікаторів міст для генерації вулиць.");
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return ids;
+        return cityData;
     }
 
     public void saveCities(List<ParsedCity> cities, Map<String, Integer> districtMap) {

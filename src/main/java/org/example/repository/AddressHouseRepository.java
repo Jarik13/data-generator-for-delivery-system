@@ -4,8 +4,6 @@ import org.example.config.DatabaseConfig;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.*;
 
 public class AddressHouseRepository {
@@ -82,24 +80,5 @@ public class AddressHouseRepository {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    public Map<Integer, List<Integer>> getStreetHouseMap() {
-        Map<Integer, List<Integer>> map = new HashMap<>();
-        try (Connection conn = DatabaseConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                     "SELECT street_id, address_house_id FROM address_houses ORDER BY street_id, address_house_id")) {
-            while (rs.next()) {
-                int streetId = rs.getInt("street_id");
-                int houseId = rs.getInt("address_house_id");
-
-                map.computeIfAbsent(streetId, k -> new ArrayList<>()).add(houseId);
-            }
-            System.out.printf("Завантажено мапу вулиця->будинки: %,d вулиць\n", map.size());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return map;
     }
 }
