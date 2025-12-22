@@ -15,6 +15,7 @@ public class GeoDataManager {
     private final CityRepository cityRepository;
     private final StreetRepository streetRepository;
     private final AddressHouseRepository addressHouseRepository;
+    private final AddressRepository addressRepository;
 
     public GeoDataManager(Random random, Faker faker) {
         this.regionRepository = new RegionRepository();
@@ -22,6 +23,7 @@ public class GeoDataManager {
         this.cityRepository = new CityRepository();
         this.streetRepository = new StreetRepository(random, faker);
         this.addressHouseRepository = new AddressHouseRepository();
+        this.addressRepository = new AddressRepository(random);
     }
 
     public void importGeography(NovaPoshtaAPI api) {
@@ -29,28 +31,32 @@ public class GeoDataManager {
         long start = System.currentTimeMillis();
 
         try {
-            log.info(">>> [1/5] Обробка областей...");
+            log.info(">>> [1/6] Обробка областей...");
             List<ParsedRegion> regions = api.getAreas();
             regionRepository.saveRegions(regions);
             Map<String, Integer> regionMap = regionRepository.getRegionNameIdMap();
 
-            log.info(">>> [2/5] Завантаження міст з API та формування районів...");
+            log.info(">>> [2/6] Завантаження міст з API та формування районів...");
             List<ParsedCity> settlements = api.getSettlements();
             List<ParsedDistrict> districts = extractDistrictsFromCities(settlements);
             districtRepository.saveDistricts(districts, regionMap);
             Map<String, Integer> districtMap = districtRepository.getDistrictNameIdMap(regionMap);
 
-            log.info(">>> [3/5] Збереження міст у БД...");
+            log.info(">>> [3/6] Збереження міст у БД...");
             cityRepository.saveCities(settlements, districtMap);
 
-            log.info(">>> [4/5] Генерація вулиць на основі даних з БД...");
+            log.info(">>> [4/6] Генерація вулиць на основі даних з БД...");
             Map<Integer, String> cityData = cityRepository.getAllCityDataFromDb();
             List<ParsedStreet> streets = streetRepository.generateStreets(cityData);
             streetRepository.saveStreets(streets);
 
-            log.info(">>> [5/5] Генерація будинків...");
+            log.info(">>> [5/6] Генерація номерів будинків...");
             Map<Integer, List<Integer>> cityStreetMap = streetRepository.getCityStreetMap();
             addressHouseRepository.saveHouses(cityStreetMap, 10, 50);
+
+            log.info(">>> [6/6] Генерація повних адрес (квартир) на основі будинків...");
+            int[] houseRange = addressRepository.getHouseIdRange();
+            addressRepository.saveAddresses(houseRange[0], houseRange[1]);
 
             long duration = (System.currentTimeMillis() - start) / 1000;
             log.info("=== ІМПОРТ ГЕОГРАФІЇ ЗАВЕРШЕНО ({} с.) ===", duration);
