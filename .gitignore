@@ -33,7 +33,7 @@ build/
 .vscode/
 
 # Demo file
-./src/main/java/org/example/MainTestPostomats.java
+src/main/java/org/example/MainTestPostomats.java
 
 # Log files
 logs/
