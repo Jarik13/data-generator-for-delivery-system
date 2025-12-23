@@ -2,7 +2,7 @@ package org.example.repository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.config.DatabaseConfig;
-import org.example.manager.helper.FakeGenerator;
+import org.example.service.helper.FakeGenerator;
 
 import java.sql.*;
 import java.util.ArrayList;

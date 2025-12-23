@@ -3,11 +3,8 @@ package org.example;
 import net.datafaker.Faker;
 import org.example.api.NovaPoshtaAPI;
 import org.example.config.DatabaseConfig;
-import org.example.manager.DataManager;
-import org.example.manager.helper.ClassifierDataManager;
-import org.example.manager.helper.DeliveryPointDataManager;
-import org.example.manager.helper.GeoDataManager;
-import org.example.manager.helper.PersonDataManager;
+import org.example.service.DataService;
+import org.example.service.helper.*;
 import org.example.repository.*;
 
 import java.util.Locale;
@@ -30,18 +27,18 @@ public class Application {
         StaticDataRepository staticDataRepository = new StaticDataRepository();
         PersonRepository personRepository = new PersonRepository();
 
-        ClassifierDataManager classifierDataManager = new ClassifierDataManager(boxRepository,
+        ClassifierDataService classifierDataService = new ClassifierDataService(boxRepository,
                 parcelTypeRepository, staticDataRepository);
-        GeoDataManager geoDataManager = new GeoDataManager(regionRepository, districtRepository,
+        GeoDataService geoDataService = new GeoDataService(regionRepository, districtRepository,
                 cityRepository, streetRepository, addressHouseRepository, addressRepository);
-        DeliveryPointDataManager deliveryPointDataManager = new DeliveryPointDataManager(deliveryPointRepository);
-        PersonDataManager personDataManager = new PersonDataManager(random, personRepository);
+        DeliveryPointDataService deliveryPointDataService = new DeliveryPointDataService(deliveryPointRepository);
+        PersonDataService personDataService = new PersonDataService(random, personRepository);
 
 
         NovaPoshtaAPI api = new NovaPoshtaAPI();
-        DataManager dataManager = new DataManager(geoDataManager, deliveryPointDataManager, classifierDataManager, personDataManager);
+        DataService dataService = new DataService(geoDataService, deliveryPointDataService, classifierDataService, personDataService);
 
-        dataManager.importAllData(api);
+        dataService.importAllData(api);
 
         DatabaseConfig.close();
     }

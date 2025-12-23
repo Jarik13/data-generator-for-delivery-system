@@ -1,4 +1,4 @@
-package org.example.manager.helper;
+package org.example.service.helper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +10,7 @@ import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
-public class GeoDataManager {
+public class GeoDataService {
     private final RegionRepository regionRepository;
     private final DistrictRepository districtRepository;
     private final CityRepository cityRepository;
@@ -57,8 +57,8 @@ public class GeoDataManager {
         }
     }
 
-    public Map<String, Integer> getCityMap() {
-        return cityRepository.getCityNameIdMap();
+    public Map<String, Object> getCityMap() {
+        return cityRepository.getSmartCityMap();
     }
 
     private List<ParsedDistrict> extractDistrictsFromCities(List<ParsedCity> cities) {

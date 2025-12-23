@@ -1,4 +1,4 @@
-package org.example.manager.helper;
+package org.example.service.helper;
 
 import net.datafaker.Faker;
 

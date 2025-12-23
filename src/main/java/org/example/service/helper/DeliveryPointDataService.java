@@ -1,4 +1,4 @@
-package org.example.manager.helper;
+package org.example.service.helper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,10 +11,10 @@ import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
-public class DeliveryPointDataManager {
+public class DeliveryPointDataService {
     private final DeliveryPointRepository deliveryPointRepository;
 
-    public void importDeliveryPoints(NovaPoshtaAPI api, Map<String, Integer> cityMap) {
+    public void importDeliveryPoints(NovaPoshtaAPI api, Map<String, Object> smartCityMap) {
         log.info("=== ПОЧАТОК ЗАВАНТАЖЕННЯ ТОЧОК ДОСТАВКИ ===");
         long start = System.currentTimeMillis();
 
@@ -24,7 +24,7 @@ public class DeliveryPointDataManager {
 
             log.info("Успішно отримано точок доставки з API: {}", points.size());
 
-            deliveryPointRepository.saveDeliveryPoints(points, cityMap);
+            deliveryPointRepository.saveDeliveryPoints(points, smartCityMap);
 
             long duration = (System.currentTimeMillis() - start) / 1000;
             log.info("=== ЗАВАНТАЖЕННЯ ТОЧОК ДОСТАВКИ ЗАВЕРШЕНО ({} с.) ===", duration);

@@ -115,4 +115,38 @@ public class CityRepository {
 
         return map;
     }
+
+    public Map<String, Object> getSmartCityMap() {
+        Map<String, Map<String, Integer>> smartMap = new HashMap<>();
+
+        String sql = """
+            SELECT c.city_id, c.city_name, d.district_name, r.region_name 
+            FROM cities c
+            LEFT JOIN districts d ON c.district_id = d.district_id
+            LEFT JOIN regions r ON d.region_id = r.region_id
+        """;
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                int id = rs.getInt("city_id");
+                String reg = normalize(rs.getString("region_name"));
+                String city = normalize(rs.getString("city_name"));
+                String dist = normalize(rs.getString("district_name"));
+
+                String lookupKey = reg + "|" + city;
+
+                smartMap.computeIfAbsent(lookupKey, k -> new HashMap<>()).put(dist, id);
+            }
+            System.out.println("Завантажено SmartMap: " + smartMap.size() + " унікальних комбінацій Область|Місто");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("smart", smartMap);
+        return result;
+    }
 }

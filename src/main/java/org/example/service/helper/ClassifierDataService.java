@@ -1,4 +1,4 @@
-package org.example.manager.helper;
+package org.example.service.helper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +13,7 @@ import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
-public class ClassifierDataManager {
+public class ClassifierDataService {
     private final BoxRepository boxRepository;
     private final ParcelTypeRepository parcelTypeRepository;
     private final StaticDataRepository staticDataRepository;
